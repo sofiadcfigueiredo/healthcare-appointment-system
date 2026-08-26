@@ -56,6 +56,12 @@ app.get('/api/patients/:id', (req, res) => {
 app.post('/api/patients', (req, res) => {
   const { name, email } = req.body;
 
+  if (!name || !email) {
+    return res.status(400).json({
+      message: 'Name and email are required'
+    });
+  }
+
   const sql = 'INSERT INTO patients (name, email) VALUES (?, ?)';
 
   db.query(sql, [name, email], (err, result) => {
@@ -80,6 +86,12 @@ app.post('/api/patients', (req, res) => {
 app.put('/api/patients/:id', (req, res) => {
   const id = Number(req.params.id);
   const { name, email } = req.body;
+
+  if (!name || !email) {
+    return res.status(400).json({
+      message: 'Name and email are required'
+    });
+  }
 
   const sql = 'UPDATE patients SET name = ?, email = ? WHERE id = ?';
 
