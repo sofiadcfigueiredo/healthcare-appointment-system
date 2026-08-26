@@ -1,23 +1,11 @@
 const express = require('express');
+const db = require('./db');
 
 const app = express();
 
 app.use(express.json());
 
 const PORT = 3000;
-
-const patients = [
-  {
-    id: 1,
-    name: 'Maria Silva',
-    email: 'maria@example.com'
-  },
-  {
-    id: 2,
-    name: 'João Costa',
-    email: 'joao@example.com'
-  }
-];
 
 app.get('/', (req, res) => {
   res.json({
@@ -26,70 +14,123 @@ app.get('/', (req, res) => {
 });
 
 app.get('/api/patients', (req, res) => {
-  res.json(patients);
+  const sql = 'SELECT * FROM patients';
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching patients:', err.message);
+
+      return res.status(500).json({
+        message: 'Database error'
+      });
+    }
+
+    res.json(results);
+  });
 });
 
 app.get('/api/patients/:id', (req, res) => {
   const id = Number(req.params.id);
 
-  const patient = patients.find(patient => patient.id === id);
+  const sql = 'SELECT * FROM patients WHERE id = ?';
 
-  if (!patient) {
-    return res.status(404).json({
-      message: 'Patient not found'
-    });
-  }
+  db.query(sql, [id], (err, results) => {
+    if (err) {
+      console.error('Error fetching patient:', err.message);
 
-  res.json(patient);
+      return res.status(500).json({
+        message: 'Database error'
+      });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({
+        message: 'Patient not found'
+      });
+    }
+
+    res.json(results[0]);
+  });
 });
 
 app.post('/api/patients', (req, res) => {
   const { name, email } = req.body;
 
-  const newPatient = {
-    id: patients.length + 1,
-    name: name,
-    email: email
-  };
+  const sql = 'INSERT INTO patients (name, email) VALUES (?, ?)';
 
-  patients.push(newPatient);
+  db.query(sql, [name, email], (err, result) => {
+    if (err) {
+      console.error('Error creating patient:', err.message);
 
-  res.status(201).json(newPatient);
+      return res.status(500).json({
+        message: 'Database error'
+      });
+    }
+
+    const newPatient = {
+      id: result.insertId,
+      name: name,
+      email: email
+    };
+
+    res.status(201).json(newPatient);
+  });
 });
 
 app.put('/api/patients/:id', (req, res) => {
   const id = Number(req.params.id);
-
-  const patient = patients.find(patient => patient.id === id);
-
-  if (!patient) {
-    return res.status(404).json({
-      message: 'Patient not found'
-    });
-  }
-
   const { name, email } = req.body;
 
-  patient.name = name;
-  patient.email = email;
+  const sql = 'UPDATE patients SET name = ?, email = ? WHERE id = ?';
 
-  res.json(patient);
+  db.query(sql, [name, email, id], (err, result) => {
+    if (err) {
+      console.error('Error updating patient:', err.message);
+
+      return res.status(500).json({
+        message: 'Database error'
+      });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        message: 'Patient not found'
+      });
+    }
+
+    res.json({
+      id: id,
+      name: name,
+      email: email
+    });
+  });
 });
 
 app.delete('/api/patients/:id', (req, res) => {
   const id = Number(req.params.id);
 
-  const patientIndex = patients.findIndex(patient => patient.id === id);
+  const sql = 'DELETE FROM patients WHERE id = ?';
 
-  if (patientIndex === -1) {
-    return res.status(404).json({
-      message: 'Patient not found'
+  db.query(sql, [id], (err, result) => {
+    if (err) {
+      console.error('Error deleting patient:', err.message);
+
+      return res.status(500).json({
+        message: 'Database error'
+      });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        message: 'Patient not found'
+      });
+    }
+
+    res.json({
+      message: 'Patient deleted successfully',
+      id: id
     });
-  }
-
-  const deletedPatient = patients.splice(patientIndex, 1);
-
-  res.json(deletedPatient[0]);
+  });
 });
 
 app.listen(PORT, () => {
